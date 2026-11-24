@@ -1,0 +1,14 @@
+{
+  "name": "supplier-db-manager",
+  "version": "1.0.0",
+  "description": "Website manajemen database supplier & produk dengan auto-direct WhatsApp, Grup WA, dan Website",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": ["supplier", "database", "whatsapp", "inventory"],
+  "author": "",
+  "license": "ISC"
+}

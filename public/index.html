@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SupplierHub — Manajemen Database Supplier &amp; Produk</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            border: 'hsl(var(--border))',
+            input: 'hsl(var(--input))',
+            ring: 'hsl(var(--ring))',
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            primary: {
+              DEFAULT: 'hsl(var(--primary))',
+              foreground: 'hsl(var(--primary-foreground))',
+            },
+            secondary: {
+              DEFAULT: 'hsl(var(--secondary))',
+              foreground: 'hsl(var(--secondary-foreground))',
+            },
+            muted: {
+              DEFAULT: 'hsl(var(--muted))',
+              foreground: 'hsl(var(--muted-foreground))',
+            },
+            accent: {
+              DEFAULT: 'hsl(var(--accent))',
+              foreground: 'hsl(var(--accent-foreground))',
+            },
+            destructive: {
+              DEFAULT: 'hsl(var(--destructive))',
+              foreground: 'hsl(var(--destructive-foreground))',
+            },
+            card: {
+              DEFAULT: 'hsl(var(--card))',
+              foreground: 'hsl(var(--card-foreground))',
+            },
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
+</head>
+<body class="min-h-screen bg-background text-foreground">
+  <div class="min-h-screen flex flex-col">
+    <!-- Topbar -->
+    <header class="sticky top-0 z-20 border-b border-border bg-card/85 backdrop-blur-md">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-sm icon-lg" aria-hidden="true">
+            <i data-lucide="package"></i>
+          </div>
+          <div>
+            <h1 class="text-base font-semibold tracking-tight leading-tight">SupplierHub</h1>
+            <p class="text-xs text-muted-foreground">Database Supplier &amp; Produk Akun Digital</p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="btnSettings" class="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-xs font-medium text-foreground shadow-xs hover:bg-accent transition-colors cursor-pointer" title="Atur template pesan WhatsApp">
+            <i data-lucide="message-square-text"></i>
+            <span>Template WA</span>
+          </button>
+          <button id="btnExport" class="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-xs font-medium text-foreground shadow-xs hover:bg-accent transition-colors cursor-pointer" title="Export database ke JSON">
+            <i data-lucide="download"></i>
+            <span>Export</span>
+          </button>
+          <button id="btnAddSupplier" class="inline-flex items-center justify-center gap-2 rounded-full bg-secondary px-4 py-2 text-xs font-semibold text-secondary-foreground hover:bg-zinc-200/80 transition-colors cursor-pointer">
+            <i data-lucide="user-plus"></i>
+            <span>Supplier</span>
+          </button>
+          <button id="btnAddProduct" class="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors cursor-pointer">
+            <i data-lucide="plus"></i>
+            <span>Produk</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 flex-1 space-y-6">
+      <!-- Stats Row -->
+      <section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5" aria-label="Ringkasan Database">
+        <div class="rounded-3xl border border-border bg-card p-4 shadow-xs flex items-center gap-3.5">
+          <div class="w-10 h-10 rounded-full bg-zinc-100 text-zinc-700 flex items-center justify-center shrink-0 icon-lg">
+            <i data-lucide="layers"></i>
+          </div>
+          <div>
+            <span class="block text-xs font-medium text-muted-foreground">Total Produk</span>
+            <strong class="text-2xl font-bold tracking-tight" id="statProducts">0</strong>
+          </div>
+        </div>
+        <div class="rounded-3xl border border-border bg-card p-4 shadow-xs flex items-center gap-3.5">
+          <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 icon-lg">
+            <i data-lucide="store"></i>
+          </div>
+          <div>
+            <span class="block text-xs font-medium text-muted-foreground">Total Supplier</span>
+            <strong class="text-2xl font-bold tracking-tight" id="statSuppliers">0</strong>
+          </div>
+        </div>
+        <div class="rounded-3xl border border-border bg-card p-4 shadow-xs flex items-center gap-3.5">
+          <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 icon-lg">
+            <i data-lucide="message-circle"></i>
+          </div>
+          <div>
+            <span class="block text-xs font-medium text-muted-foreground">WA Kontak</span>
+            <strong class="text-2xl font-bold tracking-tight text-emerald-600" id="statWaDirect">0</strong>
+          </div>
+        </div>
+        <div class="rounded-3xl border border-border bg-card p-4 shadow-xs flex items-center gap-3.5">
+          <div class="w-10 h-10 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center shrink-0 icon-lg">
+            <i data-lucide="users"></i>
+          </div>
+          <div>
+            <span class="block text-xs font-medium text-muted-foreground">WA Grup</span>
+            <strong class="text-2xl font-bold tracking-tight text-teal-600" id="statWaGroup">0</strong>
+          </div>
+        </div>
+        <div class="rounded-3xl border border-border bg-card p-4 shadow-xs flex items-center gap-3.5 col-span-2 sm:col-span-1">
+          <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 icon-lg">
+            <i data-lucide="globe"></i>
+          </div>
+          <div>
+            <span class="block text-xs font-medium text-muted-foreground">Website</span>
+            <strong class="text-2xl font-bold tracking-tight text-blue-600" id="statWebsite">0</strong>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tabs & Toolbar -->
+      <section class="space-y-3.5">
+        <div class="inline-flex items-center rounded-full border border-border bg-card p-1 shadow-xs" role="tablist">
+          <button class="tab active inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-all cursor-pointer" data-tab="products" role="tab" aria-selected="true">
+            <i data-lucide="search"></i>
+            <span>Cari Produk</span>
+          </button>
+          <button class="tab inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-all cursor-pointer" data-tab="suppliers" role="tab" aria-selected="false">
+            <i data-lucide="store"></i>
+            <span>Daftar Supplier</span>
+          </button>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="relative flex-1 min-w-[280px]">
+            <span class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+              <i data-lucide="search"></i>
+            </span>
+            <input
+              type="search"
+              id="searchInput"
+              placeholder="Cari produk, plan, durasi, atau supplier... (tekan /)"
+              autocomplete="off"
+              class="w-full rounded-full border border-input bg-card pl-11 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground shadow-xs focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground transition-all"
+            />
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2.5">
+            <div class="inline-flex items-center rounded-full border border-border bg-card p-1 shadow-xs icon-xs" id="channelFilter">
+              <button class="pill active inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-channel="all">Semua</button>
+              <button class="pill inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-channel="wa_direct">
+                <i data-lucide="message-circle"></i> WA Kontak
+              </button>
+              <button class="pill inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-channel="wa_group">
+                <i data-lucide="users"></i> WA Grup
+              </button>
+              <button class="pill inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-channel="website">
+                <i data-lucide="globe"></i> Website
+              </button>
+            </div>
+
+            <select id="categoryFilter" class="rounded-full border border-input bg-card px-4 py-2 text-xs font-medium text-foreground shadow-xs focus:outline-none focus:ring-2 focus:ring-ring/20 cursor-pointer" aria-label="Filter Aplikasi">
+              <option value="all">Semua Aplikasi</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- Products View -->
+      <section id="viewProducts" class="view-section active">
+        <div class="rounded-3xl border border-border bg-card shadow-xs overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-border bg-muted/50">
+                  <th class="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Produk &amp; Plan</th>
+                  <th class="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Aplikasi</th>
+                  <th class="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Harga Jual / Modal</th>
+                  <th class="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Supplier &amp; Jalur Kontak</th>
+                  <th class="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">Aksi &amp; Message</th>
+                </tr>
+              </thead>
+              <tbody id="productsTableBody" class="divide-y divide-border/60">
+                <tr><td colspan="5" class="px-5 py-12 text-center text-sm text-muted-foreground">Memuat data produk...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Suppliers View -->
+      <section id="viewSuppliers" class="view-section">
+        <div id="suppliersGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="col-span-full py-12 text-center text-sm text-muted-foreground">Memuat data supplier...</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal: Add/Edit Supplier -->
+  <div id="modalSupplier" class="modal-backdrop hidden fixed inset-0 z-50 bg-black/45 backdrop-blur-xs flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="modalSupplierTitle">
+    <div class="w-full max-w-xl max-h-[92vh] flex flex-col rounded-3xl border border-border bg-card shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+        <h2 id="modalSupplierTitle" class="text-base font-semibold">Tambah Supplier</h2>
+        <button class="w-8 h-8 rounded-full bg-secondary text-muted-foreground hover:text-foreground hover:bg-zinc-200 flex items-center justify-center transition-colors cursor-pointer" data-close="modalSupplier" aria-label="Tutup">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <form id="formSupplier" class="p-6 overflow-y-auto space-y-4">
+        <input type="hidden" id="supId" />
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div>
+            <label for="supName" class="block text-xs font-medium text-foreground mb-1.5">Nama Supplier <span class="text-destructive">*</span></label>
+            <input type="text" id="supName" required placeholder="Contoh: Fajar V3 / Warung Rebahan" class="w-full rounded-2xl border border-input bg-card px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground" />
+          </div>
+          <div>
+            <label for="supCategory" class="block text-xs font-medium text-foreground mb-1.5">Kategori</label>
+            <input type="text" id="supCategory" placeholder="Contoh: Produk Digital / Akun Premium" class="w-full rounded-2xl border border-input bg-card px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-foreground mb-2">Jalur Kontak Utama (Auto-Direct saat klik Message) <span class="text-destructive">*</span></label>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <label class="radio-card rounded-2xl border border-border p-3 cursor-pointer flex flex-col gap-1 transition-colors hover:bg-muted/40">
+              <input type="radio" name="supContactType" value="wa_direct" checked class="mb-0.5 accent-zinc-900" />
+              <span class="inline-flex items-center gap-1.5 text-xs font-semibold icon-sm"><i data-lucide="message-circle"></i> WA Kontak</span>
+              <span class="text-[11px] text-muted-foreground">Direct chat WhatsApp</span>
+            </label>
+            <label class="radio-card rounded-2xl border border-border p-3 cursor-pointer flex flex-col gap-1 transition-colors hover:bg-muted/40">
+              <input type="radio" name="supContactType" value="wa_group" class="mb-0.5 accent-zinc-900" />
+              <span class="inline-flex items-center gap-1.5 text-xs font-semibold icon-sm"><i data-lucide="users"></i> WA Grup</span>
+              <span class="text-[11px] text-muted-foreground">Direct ke link grup WA</span>
+            </label>
+            <label class="radio-card rounded-2xl border border-border p-3 cursor-pointer flex flex-col gap-1 transition-colors hover:bg-muted/40">
+              <input type="radio" name="supContactType" value="website" class="mb-0.5 accent-zinc-900" />
+              <span class="inline-flex items-center gap-1.5 text-xs font-semibold icon-sm"><i data-lucide="globe"></i> Website</span>
+              <span class="text-[11px] text-muted-foreground">Direct ke web supplier</span>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label for="supWaNumber" class="block text-xs font-medium text-foreground mb-1.5">Nomor WhatsApp (Kontak Pribadi/Admin)</label>
+          <input type="text" id="supWaNumber" placeholder="Contoh: 081234567890 atau 6281234567890" class="w-full rounded-2xl border border-input bg-card px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground" />
+          <p class="mt-1 text-[11px] text-muted-foreground">Otomatis dikonversi ke format wa.me/62...</p>
+        </div>
+
+        <div>
+          <label for="supWaGroup" class="block text-xs font-medium text-foreground mb-1.5">Link Grup WhatsApp</label>
+          <input type="url" id="supWaGroup" placeholder="https://chat.whatsapp.com/..." class="w-full rounded-2xl border border-input bg-card px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground" />
+          <p class="mt-1 text-[11px] text-muted-foreground">Bisa dikosongkan dulu dan diisi nanti saat link grup tersedia.</p>
+        </div>
+
+        <div>
+          <label for="supWebsite" class="block text-xs font-medium text-foreground mb-1.5">URL Website Supplier</label>
+          <input type="text" id="supWebsite" placeholder="https://supplier.com" class="w-full rounded-2xl border border-input bg-card px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground" />
+        </div>
+
+        <div>
+          <label for="supNotes" class="block text-xs font-medium text-foreground mb-1.5">Catatan Supplier</label>
+          <textarea id="supNotes" rows="2" placeholder="Jam operasional, respon cepat, syarat order, dll." class="w-full rounded-2xl border border-input bg-card px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground"></textarea>
+        </div>
+
+        <div class="pt-2 flex items-center justify-end gap-2">
+          <button type="button" class="rounded-full border border-border bg-card px-4 py-2 text-xs font-medium hover:bg-accent transition-colors cursor-pointer" data-close="modalSupplier">Batal</button>
+          <button type="submit" class="inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer">
+            <i data-lucide="check"></i> Simpan Supplier
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Add/Edit Product -->
+  <div id="modalProduct" class="modal-backdrop hidden fixed inset-0 z-50 bg-black/45 backdrop-blur-xs flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="modalProductTitle">
+    <div class="w-full max-w-xl max-h-[92vh] flex flex-col rounded-3xl border border-border bg-card shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+        <h2 id="modalProductTitle" class="text-base font-semibold">Tambah Produk Akun Digital</h2>
+        <button class="w-8 h-8 rounded-full bg-secondary text-muted-foreground hover:text-foreground hover:bg-zinc-200 flex items-center justify-center transition-colors cursor-pointer" data-close="modalProduct" aria-label="Tutup">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <form id="formProduct" class="p-6 overflow-y-auto space-y-4">
+        <input type="hidden" id="prodId" />
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label for="prodSupplier" class="text-xs font-medium text-foreground">Supplier <span class="text-destructive">*</span></label>
+              <button type="button" id="btnToggleNewSup" class="rounded-full bg-secondary px-2.5 py-0.5 text-[11px] font-semibold text-foreground hover:bg-zinc-200 transition-colors cursor-pointer">+ Supplier Baru</button>
+            </div>
+            <select id="prodSupplier" required class="w-full rounded-2xl border border-input bg-card px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground"></select>
+          </div>
+          <div>
+            <label for="prodCategory" class="block text-xs font-medium text-foreground mb-1.5">Produk / Aplikasi <span class="text-destructive">*</span></label>
+            <input type="text" id="prodCategory" list="productCategoryList" required placeholder="Contoh: Netflix, Canva, Chat Gpt, Spotify" class="w-full rounded-2xl border border-input bg-card px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground" />
+            <datalist id="productCategoryList"></datalist>
+          </div>
+        </div>
+
+        <!-- Inline Quick Add New Supplier -->
+        <div id="inlineNewSupplier" class="hidden rounded-2xl border border-border bg-muted/60 p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <strong class="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground icon-sm">
+              <i data-lucide="user-plus"></i> Tambah Supplier Baru
+            </strong>
+            <button type="button" id="btnCancelNewSup" class="rounded-full bg-card border border-border px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">Pilih dari daftar</button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label for="newSupName" class="block text-xs font-medium text-foreground mb-1">Nama Supplier Baru <span class="text-destructive">*</span></label>
+              <input type="text" id="newSupName" placeholder="Contoh: Toko Digital Jaya" class="w-full rounded-2xl border border-input bg-card px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" />
+            </div>
+            <div>
+              <label for="newSupType" class="block text-xs font-medium text-foreground mb-1">Jalur Kontak Utama</label>
+              <select id="newSupType" class="w-full rounded-2xl border border-input bg-card px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20">
+                <option value="wa_direct">WA Kontak</option>
+                <option value="wa_group">WA Grup</option>
+                <option value="website">Website</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label for="newSupContact" id="newSupContactLabel" class="block text-xs font-medium text-foreground mb-1">Nomor WhatsApp</label>
+            <input type="text" id="newSupContact" placeholder="Contoh: 081234567890" class="w-full rounded-2xl border border-input bg-card px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div>
+            <label for="prodPlan" class="block text-xs font-medium text-foreground mb-1.5">Plan / Tipe Akun <span class="text-destructive">*</span></label>
+            <input type="text" id="prodPlan" required placeholder="Contoh: Sharing 1P1U, Private, Famhead" class="w-full rounded-2xl border border-input bg-card px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground" />
+          </div>
+          <div>
+            <label for="prodDurasi" class="block text-xs font-medium text-foreground mb-1.5">Durasi</label>
+            <input type="text" id="prodDurasi" placeholder="Contoh: 1 Bulan, 7 Hari, 1 Tahun" class="w-full rounded-2xl border border-input bg-card px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div>
+            <label for="prodAkses" class="block text-xs font-medium text-foreground mb-1.5">Tipe Akses Akun</label>
+            <input type="text" id="prodAkses" placeholder="Contoh: Email/Pw, Invite / Family, Legal = Email/Pw" class="w-full rounded-2xl border border-input bg-card px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground" />
+          </div>
+          <div>
+            <label for="prodStatus" class="block text-xs font-medium text-foreground mb-1.5">Status Stok</label>
+            <select id="prodStatus" class="w-full rounded-2xl border border-input bg-card px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground">
+              <option value="Ready">Ready</option>
+              <option value="Kosong">Kosong</option>
+              <option value="Pre-Order">Pre-Order</option>
+              <option value="Nonaktif">Nonaktif</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div>
+            <label for="prodPrice" class="block text-xs font-medium text-foreground mb-1.5">Harga Jual (Rp)</label>
+            <input type="number" id="prodPrice" min="0" step="500" placeholder="Contoh: 37000" class="w-full rounded-2xl border border-input bg-card px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground" />
+          </div>
+          <div>
+            <label for="prodHargaModal" class="block text-xs font-medium text-foreground mb-1.5">Harga Modal (Rp)</label>
+            <input type="number" id="prodHargaModal" min="0" step="500" placeholder="Contoh: 25000" class="w-full rounded-2xl border border-input bg-card px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground" />
+          </div>
+        </div>
+
+        <div>
+          <label for="prodContactUrl" class="block text-xs font-medium text-foreground mb-1.5">Link Produk Spesifik (Opsional — untuk Supplier Web)</label>
+          <input type="url" id="prodContactUrl" placeholder="https://tongdigi.com/products/..." class="w-full rounded-2xl border border-input bg-card px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground" />
+          <p class="mt-1 text-[11px] text-muted-foreground">Jika diisi, klik Buka Web akan langsung menuju halaman produk ini.</p>
+        </div>
+
+        <div>
+          <label for="prodNotes" class="block text-xs font-medium text-foreground mb-1.5">Catatan / S&amp;K Akun</label>
+          <textarea id="prodNotes" rows="2" placeholder="Contoh: Wajib SS login, garansi full, prioritas utama, dll." class="w-full rounded-2xl border border-input bg-card px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground"></textarea>
+        </div>
+
+        <div class="pt-2 flex items-center justify-end gap-2">
+          <button type="button" class="rounded-full border border-border bg-card px-4 py-2 text-xs font-medium hover:bg-accent transition-colors cursor-pointer" data-close="modalProduct">Batal</button>
+          <button type="submit" class="inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer">
+            <i data-lucide="check"></i> Simpan Produk
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Quick Fill Missing Link -->
+  <div id="modalQuickLink" class="modal-backdrop hidden fixed inset-0 z-50 bg-black/45 backdrop-blur-xs flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="modalQuickLinkTitle">
+    <div class="w-full max-w-md rounded-3xl border border-border bg-card shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+        <h2 id="modalQuickLinkTitle" class="text-base font-semibold">Lengkapi Kontak Supplier</h2>
+        <button class="w-8 h-8 rounded-full bg-secondary text-muted-foreground hover:text-foreground hover:bg-zinc-200 flex items-center justify-center transition-colors cursor-pointer" data-close="modalQuickLink" aria-label="Tutup">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <form id="formQuickLink" class="p-6 space-y-4">
+        <input type="hidden" id="qlSupplierId" />
+        <input type="hidden" id="qlChannelType" />
+        <p id="qlDesc" class="text-sm text-muted-foreground"></p>
+        <div>
+          <label id="qlLabel" for="qlValue" class="block text-xs font-medium text-foreground mb-1.5">Link / Nomor</label>
+          <input type="text" id="qlValue" required class="w-full rounded-2xl border border-input bg-card px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground" />
+        </div>
+        <div class="pt-1 flex items-center justify-end gap-2">
+          <button type="button" class="rounded-full border border-border bg-card px-4 py-2 text-xs font-medium hover:bg-accent transition-colors cursor-pointer" data-close="modalQuickLink">Batal</button>
+          <button type="submit" class="inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer">
+            <i data-lucide="external-link"></i> Simpan &amp; Buka
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: WA Template Settings -->
+  <div id="modalSettings" class="modal-backdrop hidden fixed inset-0 z-50 bg-black/45 backdrop-blur-xs flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="modalSettingsTitle">
+    <div class="w-full max-w-md rounded-3xl border border-border bg-card shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+        <h2 id="modalSettingsTitle" class="text-base font-semibold">Template Pesan WhatsApp</h2>
+        <button class="w-8 h-8 rounded-full bg-secondary text-muted-foreground hover:text-foreground hover:bg-zinc-200 flex items-center justify-center transition-colors cursor-pointer" data-close="modalSettings" aria-label="Tutup">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <form id="formSettings" class="p-6 space-y-4">
+        <div>
+          <label for="waTemplateInput" class="block text-xs font-medium text-foreground mb-1.5">Pesan Otomatis saat klik Chat WA</label>
+          <textarea id="waTemplateInput" rows="4" required class="w-full rounded-2xl border border-input bg-card px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground"></textarea>
+          <p class="mt-1.5 text-[11px] text-muted-foreground">
+            Variabel tersedia: <code class="rounded bg-muted px-1 py-0.5">{supplier}</code>, <code class="rounded bg-muted px-1 py-0.5">{product}</code>, <code class="rounded bg-muted px-1 py-0.5">{sku}</code>, <code class="rounded bg-muted px-1 py-0.5">{sku_info}</code>
+          </p>
+        </div>
+        <div class="pt-1 flex items-center justify-end gap-2">
+          <button type="button" class="rounded-full border border-border bg-card px-4 py-2 text-xs font-medium hover:bg-accent transition-colors cursor-pointer" data-close="modalSettings">Batal</button>
+          <button type="submit" class="inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer">
+            <i data-lucide="check"></i> Simpan Template
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="hidden fixed bottom-5 right-5 z-50 rounded-full bg-primary px-5 py-2.5 text-xs font-medium text-primary-foreground shadow-lg" role="status" aria-live="polite"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
