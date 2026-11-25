@@ -1,3 +1,6 @@
+const CACHE_KEY = 'supplierhub_cache_v1';
+const INITIAL_VISIBLE_ROWS = 60;
+
 const state = {
   suppliers: [],
   products: [],
@@ -9,8 +12,35 @@ const state = {
   searchQuery: '',
   channelFilter: 'all',
   categoryFilter: 'all',
+  visibleLimit: INITIAL_VISIBLE_ROWS,
   pendingQuickProduct: null,
 };
+
+// Pre-rendered Lucide SVG icons for instant zero-lag table/card rendering
+const LUCIDE_SVG = {
+  'message-circle':
+    '<svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>',
+  users:
+    '<svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  'external-link':
+    '<svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>',
+  globe:
+    '<svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>',
+  'chevron-down':
+    '<svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+  pencil:
+    '<svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>',
+  'trash-2':
+    '<svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>',
+  plus:
+    '<svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>',
+  'sticky-note':
+    '<svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z"/><path d="M15 3v4a2 2 0 0 0 2 2h4"/></svg>',
+};
+
+function iconSvg(name) {
+  return LUCIDE_SVG[name] || '';
+}
 
 // --- Helpers ---
 function escapeHtml(str) {
@@ -160,22 +190,38 @@ function openDirectChannel(supplier, product = null, overrideChannel = null) {
   }
 }
 
-// --- Data Loading ---
-async function loadAll() {
-  const [suppliers, products, settings] = await Promise.all([
-    api('/api/suppliers'),
-    api('/api/products'),
-    api('/api/settings'),
-  ]);
-  state.suppliers = suppliers;
-  state.products = products;
-  if (settings && settings.wa_template) {
-    state.settings = settings;
+// --- Data Loading (Instant cache + single /api/bootstrap roundtrip) ---
+function applyData(data) {
+  state.suppliers = data.suppliers || [];
+  state.products = data.products || [];
+  if (data.settings && data.settings.wa_template) {
+    state.settings = data.settings;
   }
   renderStats();
   populateCategoryFilter();
   populateSupplierSelect();
   renderCurrentView();
+}
+
+function hydrateFromCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    if (parsed && Array.isArray(parsed.suppliers) && Array.isArray(parsed.products)) {
+      applyData(parsed);
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
+async function loadAll() {
+  const data = await api('/api/bootstrap');
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+  } catch {}
+  applyData(data);
 }
 
 function renderStats() {
@@ -299,7 +345,6 @@ function renderCurrentView() {
   } else {
     renderSuppliersGrid();
   }
-  refreshIcons();
 }
 
 function renderMessageSplitButton(supplier, productId = null, alignLeft = false) {
@@ -311,7 +356,7 @@ function renderMessageSplitButton(supplier, productId = null, alignLeft = false)
   if (altChannels.length === 0) {
     return `
       <button class="inline-flex items-center justify-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-xs transition-colors cursor-pointer whitespace-nowrap icon-sm ${meta.btnClass} js-msg-btn" data-supplier-id="${supplier.id}" ${pAttr}>
-        <i data-lucide="${meta.icon}"></i>
+        ${iconSvg(meta.icon)}
         <span>${meta.btnText}</span>
       </button>
     `;
@@ -321,18 +366,18 @@ function renderMessageSplitButton(supplier, productId = null, alignLeft = false)
   return `
     <div class="msg-split relative inline-flex items-center">
       <button class="inline-flex items-center justify-center gap-1.5 rounded-l-full pl-3.5 pr-2.5 py-1.5 text-xs font-semibold shadow-xs transition-colors cursor-pointer whitespace-nowrap icon-sm ${meta.btnClass} js-msg-btn" data-supplier-id="${supplier.id}" ${pAttr}>
-        <i data-lucide="${meta.icon}"></i>
+        ${iconSvg(meta.icon)}
         <span>${meta.btnText}</span>
       </button>
       <button class="inline-flex items-center justify-center rounded-r-full border-l border-white/25 pl-2 pr-2.5 py-1.5 text-xs font-semibold shadow-xs transition-colors cursor-pointer icon-sm ${meta.btnClass} js-alt-toggle" type="button" title="Pilih jalur kontak lain">
-        <i data-lucide="chevron-down"></i>
+        ${iconSvg('chevron-down')}
       </button>
       <div class="alt-menu hidden absolute ${menuPos} top-full mt-1.5 min-w-[185px] rounded-2xl border border-border bg-card p-1.5 shadow-xl z-30 text-left">
         ${altChannels
           .map(
             (c) => `
           <button type="button" class="w-full flex items-center gap-2 rounded-full px-3 py-2 text-xs font-medium text-foreground hover:bg-accent transition-colors cursor-pointer icon-sm js-msg-btn" data-supplier-id="${supplier.id}" data-channel="${c.type}" ${pAttr}>
-            <i data-lucide="${c.icon}"></i>
+            ${iconSvg(c.icon)}
             <span>${c.label}</span>
           </button>
         `
@@ -358,7 +403,11 @@ function renderProductsTable() {
     return;
   }
 
-  tbody.innerHTML = rows
+  const isFiltering = Boolean(state.searchQuery.trim() || state.channelFilter !== 'all' || state.categoryFilter !== 'all');
+  const displayRows = isFiltering ? rows : rows.slice(0, state.visibleLimit);
+  const remaining = rows.length - displayRows.length;
+
+  let html = displayRows
     .map((p) => {
       const supObj = {
         id: p.supplier_id,
@@ -403,7 +452,7 @@ function renderProductsTable() {
             <div class="text-sm font-semibold text-foreground">${escapeHtml(p.supplier_name)}</div>
             <div class="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
               <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap shrink-0 icon-xs ${meta.badgeClass}">
-                <i data-lucide="${meta.icon}"></i> ${meta.label}
+                ${iconSvg(meta.icon)} ${meta.label}
               </span>
               <span class="truncate max-w-[210px]" title="${escapeHtml(contactPreview)}">${escapeHtml(contactPreview)}</span>
             </div>
@@ -412,10 +461,10 @@ function renderProductsTable() {
             <div class="inline-flex items-center justify-end gap-1.5">
               ${renderMessageSplitButton(supObj, p.id, false)}
               <button class="w-8 h-8 rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent inline-flex items-center justify-center transition-colors cursor-pointer icon-sm js-edit-prod" data-id="${p.id}" title="Edit Produk" aria-label="Edit Produk">
-                <i data-lucide="pencil"></i>
+                ${iconSvg('pencil')}
               </button>
               <button class="w-8 h-8 rounded-full text-muted-foreground hover:text-destructive hover:bg-red-50 inline-flex items-center justify-center transition-colors cursor-pointer icon-sm js-del-prod" data-id="${p.id}" title="Hapus Produk" aria-label="Hapus Produk">
-                <i data-lucide="trash-2"></i>
+                ${iconSvg('trash-2')}
               </button>
             </div>
           </td>
@@ -423,6 +472,25 @@ function renderProductsTable() {
       `;
     })
     .join('');
+
+  if (remaining > 0) {
+    html += `
+      <tr>
+        <td colspan="5" class="px-5 py-4 text-center bg-muted/20">
+          <div class="inline-flex items-center gap-2">
+            <button type="button" class="js-load-more rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-accent transition-colors cursor-pointer">
+              Tampilkan +100 lagi (${remaining} tersisa)
+            </button>
+            <button type="button" class="js-load-all rounded-full bg-secondary px-4 py-2 text-xs font-semibold text-secondary-foreground hover:bg-zinc-200/80 transition-colors cursor-pointer">
+              Tampilkan Semua (${rows.length})
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
+
+  tbody.innerHTML = html;
 }
 
 function renderSuppliersGrid() {
@@ -445,24 +513,24 @@ function renderSuppliersGrid() {
               <p class="text-xs text-muted-foreground mt-0.5">${escapeHtml(s.category || 'Produk Digital')} &bull; ${s.product_count} produk</p>
             </div>
             <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap shrink-0 icon-xs ${meta.badgeClass}">
-              <i data-lucide="${meta.icon}"></i> ${meta.label}
+              ${iconSvg(meta.icon)} ${meta.label}
             </span>
           </div>
 
           <div class="rounded-2xl bg-muted/60 p-3.5 space-y-2 text-xs text-muted-foreground icon-sm">
             <div class="flex items-center gap-2 min-w-0">
-              <i data-lucide="message-circle"></i>
+              ${iconSvg('message-circle')}
               <span class="truncate">${escapeHtml(s.wa_number || 'Belum ada nomor WA')}</span>
             </div>
             <div class="flex items-center gap-2 min-w-0">
-              <i data-lucide="users"></i>
+              ${iconSvg('users')}
               ${s.wa_group_link ? `<a class="truncate text-blue-600 hover:underline font-medium" href="${escapeHtml(normalizeUrl(s.wa_group_link))}" target="_blank" rel="noopener">Link Grup WA Tersedia</a>` : '<span class="truncate">Belum ada link grup WA</span>'}
             </div>
             <div class="flex items-center gap-2 min-w-0">
-              <i data-lucide="globe"></i>
+              ${iconSvg('globe')}
               ${s.website_url ? `<a class="truncate text-blue-600 hover:underline font-medium" href="${escapeHtml(normalizeUrl(s.website_url))}" target="_blank" rel="noopener">${escapeHtml(s.website_url)}</a>` : '<span class="truncate">-</span>'}
             </div>
-            ${s.notes ? `<div class="flex items-center gap-2 min-w-0"><i data-lucide="sticky-note"></i><span class="truncate">${escapeHtml(s.notes)}</span></div>` : ''}
+            ${s.notes ? `<div class="flex items-center gap-2 min-w-0">${iconSvg('sticky-note')}<span class="truncate">${escapeHtml(s.notes)}</span></div>` : ''}
           </div>
 
           <div class="mt-auto pt-3 border-t border-border/70 flex items-center justify-between gap-2">
@@ -471,13 +539,13 @@ function renderSuppliersGrid() {
             </div>
             <div class="inline-flex items-center gap-1.5">
               <button class="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors cursor-pointer icon-sm js-add-prod-for" data-id="${s.id}" title="Tambah produk untuk supplier ini">
-                <i data-lucide="plus"></i> Produk
+                ${iconSvg('plus')} Produk
               </button>
               <button class="w-8 h-8 rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent inline-flex items-center justify-center transition-colors cursor-pointer icon-sm js-edit-sup" data-id="${s.id}" title="Edit Supplier" aria-label="Edit Supplier">
-                <i data-lucide="pencil"></i>
+                ${iconSvg('pencil')}
               </button>
               <button class="w-8 h-8 rounded-full text-muted-foreground hover:text-destructive hover:bg-red-50 inline-flex items-center justify-center transition-colors cursor-pointer icon-sm js-del-sup" data-id="${s.id}" title="Hapus Supplier" aria-label="Hapus Supplier">
-                <i data-lucide="trash-2"></i>
+                ${iconSvg('trash-2')}
               </button>
             </div>
           </div>
@@ -577,6 +645,7 @@ window.addEventListener('load', refreshIcons);
 
 document.addEventListener('DOMContentLoaded', () => {
   refreshIcons();
+  hydrateFromCache();
   loadAll().catch((err) => showToast(err.message));
 
   // Tabs
@@ -837,6 +906,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Close open alt menus when clicking outside
     if (!e.target.closest('.msg-split')) {
       document.querySelectorAll('.alt-menu').forEach((m) => m.classList.add('hidden'));
+    }
+
+    if (e.target.closest('.js-load-more')) {
+      state.visibleLimit += 100;
+      renderProductsTable();
+      return;
+    }
+
+    if (e.target.closest('.js-load-all')) {
+      state.visibleLimit = state.products.length;
+      renderProductsTable();
+      return;
     }
 
     const altToggle = e.target.closest('.js-alt-toggle');
