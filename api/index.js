@@ -1,0 +1,12 @@
+import { handleApi, sendJson } from './handler.js';
+
+export default async function handler(req, res) {
+  const host = req.headers.host || 'localhost';
+  const url = new URL(req.url, `https://${host}`);
+  try {
+    await handleApi(req, res, url);
+  } catch (err) {
+    console.error('[API Error]', err);
+    sendJson(res, 500, { error: err.message || 'Internal server error' });
+  }
+}

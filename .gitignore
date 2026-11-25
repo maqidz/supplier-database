@@ -2,4 +2,8 @@ node_modules/
 .DS_Store
 *.log
 .env
+.env.local
+.env*.local
+.insforge/
 data/import_sheet.csv
+AGENTS.md

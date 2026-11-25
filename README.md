@@ -9,13 +9,20 @@ Aplikasi web admin untuk mengelola database supplier dan produk akun digital den
   - **WA Grup**: Langsung mengarah ke link undangan grup WhatsApp (`https://chat.whatsapp.com/...`).
   - **Website**: Langsung mengarah ke URL produk spesifik atau website supplier.
 - **Manajemen Produk & Supplier**: Tambah, edit, dan hapus supplier/produk, termasuk fitur **+ Supplier Baru** langsung di dalam form tambah produk.
-- **Database SQLite Lokal**: Menggunakan `node:sqlite` bawaan Node.js v22+ tanpa dependensi eksternal.
-- **UI Modern**: Tailwind CSS + gaya shadcn/ui full-rounded dengan Lucide Icons.
+- **Cloud Database (InsForge Postgres)**: Data tersimpan permanen di cloud sehingga mendukung penuh baca/tulis di Vercel Serverless Functions maupun lokal.
+- **UI Modern**: Tailwind CSS + desain shadcn/ui full-rounded dengan Lucide Icons.
 
-## Cara Menjalankan
-Pastikan menggunakan **Node.js v22+**:
+## Deploy di Vercel
+Set 2 Environment Variables berikut di **Vercel Project → Settings → Environment Variables**:
+- `INSFORGE_URL`
+- `INSFORGE_API_KEY`
+
+## Cara Menjalankan Lokal
+1. Salin `.env.example` menjadi `.env` dan isi `INSFORGE_URL` serta `INSFORGE_API_KEY`.
+2. Install dependensi dan jalankan:
 
 ```bash
+npm install
 npm start
 ```
 
