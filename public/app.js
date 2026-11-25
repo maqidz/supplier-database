@@ -1,5 +1,5 @@
 const CACHE_KEY = 'supplierhub_cache_v1';
-const INITIAL_VISIBLE_ROWS = 60;
+const PAGE_SIZE = 25;
 
 const state = {
   suppliers: [],
@@ -12,7 +12,7 @@ const state = {
   searchQuery: '',
   channelFilter: 'all',
   categoryFilter: 'all',
-  visibleLimit: INITIAL_VISIBLE_ROWS,
+  currentPage: 1,
   pendingQuickProduct: null,
 };
 
@@ -28,6 +28,10 @@ const LUCIDE_SVG = {
     '<svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>',
   'chevron-down':
     '<svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+  'chevron-left':
+    '<svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
+  'chevron-right':
+    '<svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>',
   pencil:
     '<svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>',
   'trash-2':
@@ -388,6 +392,69 @@ function renderMessageSplitButton(supplier, productId = null, alignLeft = false)
   `;
 }
 
+function getPaginationPages(current, total) {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const pages = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  if (start > 2) pages.push('...');
+  for (let i = start; i <= end; i++) pages.push(i);
+  if (end < total - 1) pages.push('...');
+  pages.push(total);
+  return pages;
+}
+
+function renderProductsPagination(totalItems, totalPages, startIdx, endIdx) {
+  const bar = document.getElementById('productsPagination');
+  if (!bar) return;
+
+  if (totalItems === 0) {
+    bar.classList.add('hidden');
+    bar.innerHTML = '';
+    return;
+  }
+
+  bar.classList.remove('hidden');
+  const pages = getPaginationPages(state.currentPage, totalPages);
+  const isFirst = state.currentPage <= 1;
+  const isLast = state.currentPage >= totalPages;
+
+  bar.innerHTML = `
+    <div class="text-xs text-muted-foreground">
+      Menampilkan <strong class="text-foreground">${startIdx + 1}–${endIdx}</strong> dari <strong class="text-foreground">${totalItems}</strong> produk
+    </div>
+    <div class="inline-flex items-center gap-1 icon-sm">
+      <button type="button" class="js-page-btn inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors ${isFirst ? 'opacity-45 cursor-not-allowed' : 'hover:bg-accent cursor-pointer'}" data-page="${state.currentPage - 1}" ${isFirst ? 'disabled' : ''}>
+        ${iconSvg('chevron-left')}
+        <span>Prev</span>
+      </button>
+      ${pages
+        .map((p) => {
+          if (p === '...') {
+            return `<span class="px-2 text-xs text-muted-foreground select-none">…</span>`;
+          }
+          const active = p === state.currentPage;
+          return `
+            <button type="button" class="js-page-btn min-w-[32px] h-8 rounded-full px-2.5 text-xs font-semibold transition-colors cursor-pointer ${
+              active
+                ? 'bg-primary text-primary-foreground shadow-xs'
+                : 'border border-border bg-card text-foreground hover:bg-accent'
+            }" data-page="${p}" ${active ? 'aria-current="page"' : ''}>
+              ${p}
+            </button>
+          `;
+        })
+        .join('')}
+      <button type="button" class="js-page-btn inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors ${isLast ? 'opacity-45 cursor-not-allowed' : 'hover:bg-accent cursor-pointer'}" data-page="${state.currentPage + 1}" ${isLast ? 'disabled' : ''}>
+        <span>Next</span>
+        ${iconSvg('chevron-right')}
+      </button>
+    </div>
+  `;
+}
+
 function renderProductsTable() {
   const tbody = document.getElementById('productsTableBody');
   const rows = getFilteredProducts();
@@ -400,14 +467,19 @@ function renderProductsTable() {
         </td>
       </tr>
     `;
+    renderProductsPagination(0, 1, 0, 0);
     return;
   }
 
-  const isFiltering = Boolean(state.searchQuery.trim() || state.channelFilter !== 'all' || state.categoryFilter !== 'all');
-  const displayRows = isFiltering ? rows : rows.slice(0, state.visibleLimit);
-  const remaining = rows.length - displayRows.length;
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  if (state.currentPage > totalPages) state.currentPage = totalPages;
+  if (state.currentPage < 1) state.currentPage = 1;
 
-  let html = displayRows
+  const startIdx = (state.currentPage - 1) * PAGE_SIZE;
+  const endIdx = Math.min(startIdx + PAGE_SIZE, rows.length);
+  const displayRows = rows.slice(startIdx, endIdx);
+
+  tbody.innerHTML = displayRows
     .map((p) => {
       const supObj = {
         id: p.supplier_id,
@@ -473,24 +545,7 @@ function renderProductsTable() {
     })
     .join('');
 
-  if (remaining > 0) {
-    html += `
-      <tr>
-        <td colspan="5" class="px-5 py-4 text-center bg-muted/20">
-          <div class="inline-flex items-center gap-2">
-            <button type="button" class="js-load-more rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-accent transition-colors cursor-pointer">
-              Tampilkan +100 lagi (${remaining} tersisa)
-            </button>
-            <button type="button" class="js-load-all rounded-full bg-secondary px-4 py-2 text-xs font-semibold text-secondary-foreground hover:bg-zinc-200/80 transition-colors cursor-pointer">
-              Tampilkan Semua (${rows.length})
-            </button>
-          </div>
-        </td>
-      </tr>
-    `;
-  }
-
-  tbody.innerHTML = html;
+  renderProductsPagination(rows.length, totalPages, startIdx, endIdx);
 }
 
 function renderSuppliersGrid() {
@@ -669,6 +724,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const searchInput = document.getElementById('searchInput');
   searchInput.addEventListener('input', (e) => {
     state.searchQuery = e.target.value;
+    state.currentPage = 1;
     renderCurrentView();
   });
 
@@ -677,12 +733,14 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('#channelFilter .pill').forEach((p) => p.classList.remove('active'));
       pill.classList.add('active');
       state.channelFilter = pill.dataset.channel;
+      state.currentPage = 1;
       renderCurrentView();
     });
   });
 
   document.getElementById('categoryFilter').addEventListener('change', (e) => {
     state.categoryFilter = e.target.value;
+    state.currentPage = 1;
     renderCurrentView();
   });
 
@@ -908,15 +966,15 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.alt-menu').forEach((m) => m.classList.add('hidden'));
     }
 
-    if (e.target.closest('.js-load-more')) {
-      state.visibleLimit += 100;
-      renderProductsTable();
-      return;
-    }
-
-    if (e.target.closest('.js-load-all')) {
-      state.visibleLimit = state.products.length;
-      renderProductsTable();
+    const pageBtn = e.target.closest('.js-page-btn');
+    if (pageBtn && !pageBtn.disabled) {
+      const targetPage = Number(pageBtn.dataset.page);
+      if (targetPage >= 1) {
+        state.currentPage = targetPage;
+        renderProductsTable();
+        const section = document.getElementById('viewProducts');
+        if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
       return;
     }
 
