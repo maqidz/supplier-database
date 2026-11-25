@@ -156,6 +156,30 @@ function getAvailableChannels(sup) {
   return list;
 }
 
+function copyTextSilently(text) {
+  if (!text) return Promise.resolve(false);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).then(() => true).catch(() => fallbackCopy(text));
+  }
+  return Promise.resolve(fallbackCopy(text));
+}
+
+function fallbackCopy(text) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 function openDirectChannel(supplier, product = null, overrideChannel = null) {
   const channel = overrideChannel || supplier.contact_type || 'wa_direct';
 
@@ -178,8 +202,15 @@ function openDirectChannel(supplier, product = null, overrideChannel = null) {
       openQuickLinkModal(supplier, 'wa_group', product);
       return;
     }
+    const msg = buildWaMessage(supplier.name, product);
+    copyTextSilently(msg).then((copied) => {
+      if (copied) {
+        showToast(`Template pesan tersalin! Tinggal Paste di Grup WA ${supplier.name}.`);
+      } else {
+        showToast(`Membuka Grup WA ${supplier.name}...`);
+      }
+    });
     window.open(link, '_blank', 'noopener,noreferrer');
-    showToast(`Membuka Grup WA ${supplier.name}...`);
     return;
   }
 

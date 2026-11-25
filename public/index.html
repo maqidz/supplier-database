@@ -442,10 +442,11 @@
       </div>
       <form id="formSettings" class="p-6 space-y-4">
         <div>
-          <label for="waTemplateInput" class="block text-xs font-medium text-foreground mb-1.5">Pesan Otomatis saat klik Chat WA</label>
+          <label for="waTemplateInput" class="block text-xs font-medium text-foreground mb-1.5">Pesan Otomatis (Chat WA &amp; Grup WA)</label>
           <textarea id="waTemplateInput" rows="4" required class="w-full rounded-2xl border border-input bg-card px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-foreground"></textarea>
           <p class="mt-1.5 text-[11px] text-muted-foreground">
-            Variabel tersedia: <code class="rounded bg-muted px-1 py-0.5">{supplier}</code>, <code class="rounded bg-muted px-1 py-0.5">{product}</code>, <code class="rounded bg-muted px-1 py-0.5">{sku}</code>, <code class="rounded bg-muted px-1 py-0.5">{sku_info}</code>
+            Variabel tersedia: <code class="rounded bg-muted px-1 py-0.5">{supplier}</code>, <code class="rounded bg-muted px-1 py-0.5">{product}</code>, <code class="rounded bg-muted px-1 py-0.5">{sku}</code>, <code class="rounded bg-muted px-1 py-0.5">{sku_info}</code>.<br />
+            Untuk <strong>WA Kontak</strong> pesan langsung terisi otomatis; untuk <strong>Grup WA</strong> pesan otomatis tersalin ke clipboard (tinggal Paste).
           </p>
         </div>
         <div class="pt-1 flex items-center justify-end gap-2">
